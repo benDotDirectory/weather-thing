@@ -29,11 +29,13 @@ db_pass="DATABASE_PASSWORD"
 db_table="TABLE_NAME"
 ```
 
-4. Do a test run
+4. Create a DB on your server @TODO: write documentation
+
+5. Do a test run
 
 ```python3 weather.py```
 
-5. Deploy with a task scheduler (I like PM2)
+6. Deploy with a task scheduler (I like PM2)
 
 ```
 npm install -g pm2
