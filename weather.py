@@ -11,57 +11,81 @@ import mariadb
 import requests
 import json
 
-load_dotenv()
+def main():
 
-# Grab data from weather station
-macAddress = os.getenv("mac_address")
-apiKey = os.getenv("api_key")
-appKey = os.getenv("application_key")
+    load_dotenv()
 
-print("Sending request to api.ambientweather.net...")
+    # Grab data from weather station
+    macAddress = str(os.getenv("mac_address"))
+    apiKey = str(os.getenv("api_key"))
+    appKey = str(os.getenv("application_key"))
 
-req = requests.get("https://api.ambientweather.net/v1/devices/" + macAddress + "?apiKey=" + apiKey + "&applicationKey=" + appKey + "&limit=1", verify=False)
-if req.status_code == 200:
-    print("Got response!")
-else:
-    print("Error: failed to get response from ambient weather endpoint (Status code: " + req.status_code + ")")
-    print("Exiting...")
-    sys.exit(1)
+    print("Connecting to device (mac adress: " + macAddress + ")")
 
-# Convert response from a list to json
-resp = req.text
-resp = resp.replace("[", "", 1)
-resp = resp.replace("]", "", 1)
+    print("Sending request to api.ambientweather.net...")
 
-jsonData = json.loads(resp)
+    req = requests.get("https://api.ambientweather.net/v1/devices/" + macAddress + "?apiKey=" + apiKey + "&applicationKey=" + appKey + "&limit=1")
+    if req.status_code == 200:
+        print("Got response!")
+    else:
+        print("Error: failed to get response from ambient weather endpoint (Status code: " + str(req.status_code) + ")")
+        print("Exiting...")
+        sys.exit(1)
 
-# Build sql
-sql = "INSERT INTO " + os.getenv("db_table") + " VALUES("
-for item in jsonData:
-    sql += "'" + str(jsonData[item]) + "', "
+    # Convert response from a list to json
+    print("Generating sql...")
+    resp = req.text
+    resp = resp.replace("[", "", 1)
+    resp = resp.replace("]", "", 1)
 
-sql = sql[:-2] # Remove trailing comma
-sql += ");"
+    jsonData = json.loads(resp)
 
+    # Build sql
+    sql = "INSERT INTO " +  str(os.getenv("db_table")) + " VALUES("
+    for item in jsonData:
+        sql += "'" + str(jsonData[item]) + "', "
 
-# Connect to database
-try:
-    dbConnection = mariadb.Connect(
-        user=os.getenv("db_user"),
-        password=os.getenv("db_pass"),
-        host=os.getenv("db_host"),
-        database=os.getenv("db_name")
-    )
-except mariadb.Error as err:
-    print("Error making connection with mariadb: " + err)
-    sys.exit(1)
+    sql = sql[:-2] # Remove trailing comma
+    sql += ");"
 
-# Upload data to database
-cur = dbConnection.cursor()
+    print("Generated sql")
+    print(sql)
 
-cur.execute(
-    sql
-)
+    # Connect to database
+    print("Connecting to database: " + os.getenv("db_name") + "." + os.getenv("db_table") + " as " + os.getenv("db_user") + "@" + os.getenv("db_host"))
+    try:
+        dbConnection = mariadb.connect(
+            user=str(os.getenv("db_user")),
+            password=str(os.getenv("db_pass")),
+            host=str(os.getenv("db_host")),
+            database=str(os.getenv("db_name"))
+        )
+    except mariadb.Error as err:
+        print("Error making connection with mariadb: " + str(err))
+        sys.exit(1)
 
-# Done
-print("Done")
+    # Upload data to database
+    print("Executing sql")
+
+    cur = dbConnection.cursor()
+
+    try:
+            print("Executing...")
+            cur.execute(sql)
+            dbConnection.commit()
+            print("Commited")
+    except mariadb.Error as e:
+            dbConnection.rollback()
+            print("Error: " + str(e))
+
+    print("sql executed")
+
+    # Close
+    print("Closing connection")
+    dbConnection.close()
+
+    # Done
+    print("Done")
+
+if __name__ == "__main__":
+    main()
