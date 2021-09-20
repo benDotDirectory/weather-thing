@@ -29,7 +29,7 @@ db_pass="DATABASE_PASSWORD"
 db_table="TABLE_NAME"
 ```
 
-4. Create a DB on your server @TODO: write documentation
+4. Create a DB on your server. (install mariadb, create user, database, and table with schema. configure firewall)
 
 5. Do a test run
 
